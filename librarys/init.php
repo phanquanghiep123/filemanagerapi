@@ -50,6 +50,7 @@ Class Init  {
 		$this->_DATA["response"]= $data;
 		$this->_DATA["status"]= 1;
 		echo json_encode($this->_DATA);
+		return true;
 	}
 	function medias (){
 
@@ -65,5 +66,16 @@ Class Init  {
 	}
 	function default (){
 
+	}
+	function folder(){
+		if($this->get("id")){
+			$sql = "select * from medias where pid = ".$this->get("id")."";
+			$data =  $this->_DB->query($sql )->get()->rows();
+			$this->_DATA["response"]= $data;
+			$this->_DATA["status"]= 1;
+			echo json_encode($this->_DATA);
+			return true;
+		}
+		echo false;
 	}
 } 

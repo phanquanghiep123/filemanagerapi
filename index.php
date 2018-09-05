@@ -11,6 +11,9 @@ switch ($action) {
 	case 'trees':
 		$init->trees();
 		break;
+	case 'folder':
+		$init->folder();
+		break;
 	case 'medias':
 		$init->medias();
 		break;
