@@ -30,11 +30,8 @@ Class Init  {
 		return $_POST;
 	}
 	function get($name = null){
-		if($name && @$_GET[$name]){
-			if($_GET[$name])
-				return  $_GET[$name];
-			else
-				return false;
+		if($name){
+			return  @$_GET[$name];
 		}
 		return $_GET;
 	}
@@ -46,7 +43,7 @@ Class Init  {
 	}
 	function trees ($id = 0){
 		$sql = "select * from medias where pid = 0";
-		$data =  $this->_DB->query($sql )->get()->rows();
+		$data =  $this->_DB->query($sql)->get()->rows();
 		$this->_DATA["response"]= $data;
 		$this->_DATA["status"]= 1;
 		echo json_encode($this->_DATA);
@@ -68,14 +65,12 @@ Class Init  {
 
 	}
 	function folder(){
-		if($this->get("id")){
-			$sql = "select * from medias where pid = ".$this->get("id")."";
-			$data =  $this->_DB->query($sql )->get()->rows();
-			$this->_DATA["response"]= $data;
-			$this->_DATA["status"]= 1;
-			echo json_encode($this->_DATA);
-			return true;
-		}
-		echo false;
+		$id = $this->get("id") ? $this->get("id") : 0;
+		$sql = "select * from medias where pid = ".$id."";
+		$data =  $this->_DB->query($sql)->get()->rows();
+		$this->_DATA["response"]= $data;
+		$this->_DATA["status"]= 1;
+		echo json_encode($this->_DATA);
+		return true;
 	}
 } 

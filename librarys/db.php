@@ -75,13 +75,15 @@ Class Db{
 	}
 	function rows(){
 		$data = [];
-		if ($this->_source->num_rows > 0) {
-		    while($row = $this->_source->fetch_assoc()) {
-		        $data []= $row;
-		    }
-		    return $data;
-		} else {
-		   return null;
+		if($this->_source){
+			if ($this->_source->num_rows > 0) {
+				while($row = $this->_source->fetch_assoc()) {
+					$data []= $row;
+				}
+				return $data;
+			} else {
+			   return null;
+			}
 		}
 		return false;
 	}
