@@ -2,7 +2,7 @@
 header('Access-Control-Allow-Origin:*'); 
 header("Access-Control-Allow-Credentials: true");
 header('Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token , Authorization');
+header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token , Authorization, Cache-Control,X-Requested-With');
 include 'Librarys/init.php';
 use Librarys\Init;
 $init = new Init();
