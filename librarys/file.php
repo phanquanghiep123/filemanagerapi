@@ -1,10 +1,10 @@
 <?php
-namespace Librarys;
+namespace librarys;
 class File
  {
     private $config = [
         "extension" => "*",
-        "path"      => __FILE__,  
+        "path"      => PATHFC,  
     ];
     public $_ConfigSize = [
 		"full"   => 1900,
@@ -14,33 +14,42 @@ class File
 		"thumb"  => 420,
 	];
     private $errors = [];
-    function __construct($files,$config) {
-        foreach($files as $key => $value){
-            $this->{$key} = $value;
+    function __construct($files = null,$config) {
+        if(is_array($files)){
+            foreach($files as $key => $value){
+                $this->{$key} = $value;
+                $this->is_server = false;
+            }
+        }else if(is_string($files)){
+            $this->is_server = true;
+            $this->path_file = $files;
         }
         $this->config = array_merge ($this->config,$config);
-        
     }
     function move (){
         if($this->checkextension()){
-            if($this->config["name"]){
-                $name = str_replace(".".$this->extension,"", $this->config["name"]).".".$this->extension;
-                $this->name = $name;
-            }else{
-                $name = $this->name;
-            }
-            $this->path_folder = PATHFC . "/" .$this->config["path"];
-            if (!file_exists($this->path_folder)) {
-                mkdir($this->path_folder, 0777, true);
-            }
-            if(move_uploaded_file($this->tmp_name,$this->config["path"] . '/'. $name)){
-                $this->path_file   = $this->path_folder . '/'. $name;
-                $this->path_file   = str_replace("//","/",$this->path_file);
-                $this->path        = str_replace(PATHFC,"",$this->path_file);
-                $this->status = true;
+            if(!$this->is_server){
+                if($this->config["name"]){
+                    $name = str_replace(".".$this->extension,"", $this->config["name"]).".".$this->extension;
+                    $this->name = $name;
+                }else{
+                    $name = $this->name;
+                }
+                $this->path_folder = $this->config["path"];
+                if (!file_exists($this->path_folder)) {
+                    mkdir($this->path_folder, 0777, true);
+                }
+                if(move_uploaded_file($this->tmp_name,$this->config["path"] . '/'. $name)){
+                    $this->path_file   = $this->path_folder . '/'. $name;
+                    $this->path_file   = str_replace("//","/",$this->path_file);
+                    $this->path        = str_replace(PATHFC,"",$this->path_file);
+                    $this->status      = true;
+                }else{
+                    $this->status = false;
+                    $this->errors[] = "Upload file not working";
+                }
             }else{
                 $this->status = false;
-                $this->errors[] = "Upload file not working";
             }
         }else{
             $this->status = false;
@@ -48,7 +57,7 @@ class File
         return $this;
     }
     function resize ($size = false){
-        if($this->errors != null) return false;
+        if($this->errors != null || $this->status == false) return false;
         list($width, $height, $type, $attr) = getimagesize($this->path_file);
         if(in_array($type , array(IMAGETYPE_GIF , IMAGETYPE_JPEG ,IMAGETYPE_PNG , IMAGETYPE_BMP))){
             if(!$size){
@@ -115,7 +124,7 @@ class File
             "medium" => @$this->medium,
             "small"  => @$this->medium,
             "thumb"  => @$this->thumb,
-            "error"  => $this->errors
+            "error"  => @$this->errors
         ] ;
     }
     function checkextension (){
@@ -124,11 +133,14 @@ class File
             return false;
         }
         $extension = $this->config["extension"];
-        $argE = explode (",",$extension);
-        $path_parts = pathinfo($this->name);
-        $ext = $path_parts['extension'];
-        if(!in_array($ext,$argE)){
-            $this->errors [] = "The extension of file not allow, please uploads file has extension is `".$this->config["extension"]."`";
+        if($extension != "*"){
+            $argE = explode (",",$extension);
+            $path_parts = pathinfo($this->name);
+            $ext  = $path_parts['extension'];
+            $argE = array_diff($argE,[""]);
+            if(!in_array($ext,$argE)){
+                $this->errors [] = "The extension of file not allow, please uploads file has extension is `".$this->config["extension"]."`";
+            }
         }
         $this->extension = $ext;
         return in_array($ext,$argE);

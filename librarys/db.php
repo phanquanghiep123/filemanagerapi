@@ -1,5 +1,5 @@
 <?php 
-namespace Librarys;
+namespace librarys;
 Class Db{
 	private $servername = "localhost";
 	private $username = "root";
