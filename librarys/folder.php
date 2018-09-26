@@ -24,6 +24,9 @@ Class Folder {
         }
         return $this;
     }
+    public function where($where = []){
+        
+    }
     public function childrens(){
         $DB = new Db();
         $sql = "select * from medias where pid = $this->id";
