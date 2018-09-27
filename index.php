@@ -7,7 +7,6 @@ define("PATHFC",__DIR__);
 include 'librarys/init.php';
 include 'librarys/db.php';
 include 'librarys/file.php';
-include 'librarys/folder.php';
 use librarys\Init;
 $init = new Init();
 $action = $init->get("action");
@@ -24,8 +23,8 @@ switch ($action) {
 	case 'uploads':
 		$init->uploads();
 		break;
-	case 'delete':
-		$init->delete();
+	case 'delete_file':
+		$init->delete_file();
 		break;
 	case 'update':
 		$init->update();

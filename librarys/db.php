@@ -1,68 +1,185 @@
 <?php 
-namespace librarys;
-Class Db{
-	private $servername = "localhost";
-	private $username = "root";
-	private $password = "";
-	private $dbname = "filemanager";
-	private $conn;
-	private $_selects = [];
-	private $_wheres  = [];
-	private $_orders  = [];
-	private $_offset  = false;
-	private $_limit   = false;
-	private $_having  = false;
-	private $_groupby = false; 
-	private $_string_select = "";
-	private $_string_where = "";
-	private $_source       = "";
-	private $_sql          = "";
+Class Db {
+	private $_servername = "localhost";
+	private $_username = "root";
+	private $_password = "";
+	private $_dbname = "filemanager";
+	private $_conn;
+	private $_rows    		  = [];
+	private $_source          = null;
+	private $_sql     		  = "";
+	private $_table   		  = null;
+	private $_columns 		  = "*";
+	private $_limit           = "";
+	private $_order           = "";
+	private $_group           = "";
+	private $_relationship 	= [];
+	private $_condition 		= [];
+	private $_sqlPrint = "";
+	private $_operator = [
+		"=",">","<","<>",">=","<=","!=","like","in"
+	];
 	function __construct($foo = null)
 	{
-		// Create connection
-		$this->conn = mysqli_connect($this->servername, $this->username, $this->password, $this->dbname) or die("Unable to connect to MySQL");
+		$this->_conn = mysqli_connect($this->_servername, $this->_username, $this->_password, $this->_dbname) or die("Unable to connect to MySQL");
 		if (mysqli_connect_errno())
 		{
 		  	echo "Failed to connect to MySQL: " . mysqli_connect_error();
 		}
-		
 	}
-	function query ($sql = null){
-		$this->_sql = $sql ;
+	function select ($columns){
+		$joinString = implode("`,`",$columns);
+		$joinString = str_replace("````","`",$joinString);
+		$joinString = str_replace("```","`",$joinString);
+		$joinString = str_replace("``","`",$joinString);
+		$joinString = "`".$joinString."`";
+		$joinString = str_replace(".","`.`",$joinString);
+		$joinString = str_replace("`*`","*",$joinString);
+		$this->_columns = $joinString;
+		return true;
+	}
+	function from($table){
+		$this->_table = $table;
 		return $this;
 	}
-	function select($data){
-		$this->_selects = array_merge($this->_selects,$data);
+	function join  ($table, $ondata , $type = "INNER"){
+		$this->_relationship[] = (trim($type) . " JOIN ". trim($table) . " ON " . trim($ondata)) ;
 		return $this;
 	}
-	function where($data){
-		$this->_wheres = array_merge($this->_wheres,$data);
+	function where($wheredata){
+		if(is_array($wheredata)){
+			foreach($wheredata as $key => $value){
+				$argkey = explode(" ",$key); 
+				$argkey = array_diff($argkey,[""]);
+				$operator = " = ";
+				if(count($argkey) > 1 && in_array(@$argkey[1],$this->_operator)){
+					$key = $argkey[0];
+					$operator = " " .$argkey[1] ." ";
+				}
+				if($value == null && $value !== 0)
+					$value = "null";
+				else{
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'" . trim($value) . "'";
+				}
+				if($value == '')
+					$value = "''";	
+				$this->_condition[] = ("AND `" .trim($key) ."`" . $operator . $value);
+			}
+		}
 		return $this;
 	}
-	function order($data){
-		$this->_orders = array_merge($this->_orders,$data);
+	function like ($data){
+		foreach($data as $key => $value){
+			if($value == null && $value !== 0)
+					$value = "null";
+				else{
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'%" . trim($value) . "%'";
+				}
+				if($value == '')
+					$value = "''";	
+				$this->_condition[] = ("AND `" .trim($key) . "` LIKE(". $value .")");
+		}
 		return $this;
 	}
-	function offset($offset){
-		$this->_offset = $offset;
+	function where_or ($wheredata){
+		if(is_array( $wheredata )){
+			foreach($wheredata as $key => $value){
+				if($value == null && $value !== 0)
+					$value = "null";
+				else{
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'" . trim($value) . "'";
+				}
+				if($value == '')
+					$value = "''";	
+				$this->_condition[] = ("OR `" . trim($key) . "` = " . $value);
+			}
+		}
 		return $this;
 	}
-	function limit($limit){
-		$this->_limit = $limit;
+	function where_in($column,$arg,$type = false){
+		$string = "";
+		$data  = [];
+		foreach ($arg as $key => $value){
+			if(is_numeric($value))
+				$value = trim($value);	
+			if( is_string ($value) )
+				$value = "'" . trim($value) . "'";
+			$data.push($value);	
+		}
+		$string = implode(",",$data);
+		$this->_condition [] = ("AND `" . trim($column) . "` IN ( " . $string . " )");
+		return true;
+	}
+	function where_not_in ($column,$arg,$type = false){
+		$string = "";
+		$data  = [];
+		foreach ($arg as $key => $value){
+			if(is_numeric($value))
+				$value = trim($value);	
+			if( is_string ($value) )
+				$value = "'" . trim($value) . "'";
+			$data[] = ($value);	
+		}	
+		$string = implode(",",$data);
+		$this->_condition [] = ("AND `" . trim($column) . "` NOT  IN ( " . $string . " )");
 		return $this;
 	}
-	function insert ($data){
+	function start_group (){
+		$this->_condition [] = ("(");
+		return $this;
+	}
+	function end_group (){
+		$this->_condition [] = (")");
+		return $this;
+	}
+	function limit ($offset,$limit){
+		$this->_limit = " LIMIT " . $offset  . " , " . $limit ;
+		return $this;
+	}
+	function order_by ($order = [] ,$type = "ASC"){
+		$this->_order = " ORDER BY `".implode("`,`",$order)."` " . $type ;
+		return $this;
+	}
+	function group_by ($order){
+		$this->_group = " GROUP BY `".implode("`,`",$order)."`";
+		return $this;
+	}
+	function get (){
+		$stringcondition = $stringJoin = null;
+		if($this->_condition)
+			$stringcondition = implode(" ",$this->_condition);
 
-	}
-	function delete ($id){
-
-	}
-	function update ($id){
-
-	}
-	function get(){
-		$this->_source = $this->conn->query($this->_sql);
+		if($this->_relationship)
+			$stringJoin = implode(" ",$this->_relationship);
+		if($stringcondition != "" )
+			$stringcondition = "WHERE" . $stringcondition;
+		if($stringcondition != "" ){
+			$stringcondition = str_replace("WHEREAND","WHERE",$stringcondition);
+			$stringcondition = str_replace("WHEREOR","WHERE",$stringcondition);
+			$stringcondition = str_replace("WHEREIN","WHERE",$stringcondition);
+		}	
+	    $this->_sql = "SELECT " . $this->_columns . " FROM " . $this->_table . " " . $stringJoin . $stringcondition  . $this->_limit . $this->_order . $this->_group;
+		$this->_source = $this->_conn->query($this->_sql);
 		return $this->resetQuery();
+	}
+	function resetQuery (){
+		$this->_sqlPrint	    .= ($this->_sql. " <br/>");	
+		$this->_sql     		= "";
+		$this->_table   		= null;
+	    $this->_columns 		= "*";
+		$this->_limit           = "";
+		$this->_relationship 	= [];
+		$this->_condition 		= []; 
+		return $this;
 	}
 	function row(){
 		if ($this->_source->num_rows > 0) {
@@ -87,14 +204,104 @@ Class Db{
 		}
 		return false;
 	}
-	function resetQuery (){
-		$this->_selects = [];
-		$this->_wheres  = [];
-		$this->_orders  = [];
-		$this->_offset  = false;
-		$this->_limit   = false;
-		$this->_having  = false;
-		$this->_groupby = false ;
+	function printsql (){
+		return $this->_sqlPrint;
+	}
+	function update ($table, $dataUpdate, $where = null){
+		$lengthArg =  count($dataUpdate);
+		try{
+			$sql = "UPDATE FROM " . $table ." SET "; 
+			$i = 1;
+			foreach($dataUpdate as $key => $value){
+				if(is_numeric($value))
+					$value = trim($value);	
+				if( is_string ($value) )
+					$value = "'" . trim($value) . "'";
+				if($lengthArg < $i) 
+					$sql .= '`' .trim($key) ."` = " . $value . ",";
+				else 
+					$sql .= '` '. trim($key) . "` = " . $value ;
+				$i++;
+			}
+			if( $where != null){
+				$sql .= " WHERE ";
+				$i = 1;
+				$lengthArg = count($where);
+				foreach($where as $key => $value){
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'" . trim($value) . "'";
+					if($lengthArg < $i) 
+						$sql .= '`'. trim($key) . "` = " . $value . " AND ";
+					else 
+						$sql .= '`'. trim($key) . "` = " . $value;
+					$i++;
+				}
+			}
+			$this->_conn.query(sql);
+			return true;
+		}catch (Exception $e) {
+			echo 'Caught exception: ',  $e->getMessage(), "\n";
+			return false;
+		}	
+	}
+	function delete ($table,$where){
+		$sql = "DELETE FROM " . $table; 
+		if($where != null){
+			$sql .= " WHERE ";
+			$i = 1;
+			$lengthArg = count($where);
+			foreach($where as $key => $value){
+				if(is_numeric($value))
+					$value = trim($value);	
+				if( is_string ($value) )
+					$value = "'" . trim($value) . "'";
+				if($lengthArg < $i) $sql .= '`'. trim($key) . "` = " . $value . " AND ";
+				else $sql .= '`' . trim($key) . "` = " . $value;
+				$i++;
+			}
+			try{
+				$this->_conn->query($sql);
+				$this->_sqlPrint .= $sql . "<br/>";
+				return true;
+			}catch (Exception $e) {
+				echo 'Caught exception: ',  $e->getMessage(), "\n";
+				return false;
+			}
+		}
+	}
+	function insert ($table,$data){
+		$sql = "INSERT INTO " . $table. " ";
+		$key_insert = [];
+		$value_insert = [];
+		foreach($data as $key => $value){
+			$key_insert[] = '`'.$key.'`';
+			if(is_numeric($value))
+				$value = trim($value);	
+			if( is_string ($value) )
+				$value = "'" . trim($value) . "'";
+			$value_insert[] = $value;
+		}
+		$sql .= "(".implode(",",$key_insert).") VALUE (".implode(",",$value_insert).")";
+
+		try{
+			$this->_conn->query($sql);
+			$this->_sqlPrint .= $sql . "<br/>";
+			$this->_source = $this->_conn->query("SELECT LAST_INSERT_ID()");
+			$r = $this->row();
+			$id = $r["LAST_INSERT_ID()"];
+			if($id)
+				return $id;
+			else
+				return false;
+		}catch (Exception $e) {
+			echo 'Caught exception: ',  $e->getMessage(), "\n";
+			return false;
+		}
+	}
+	function query ($sql = null){
+		$this->_sql = $sql ;
 		return $this;
 	}
 }
