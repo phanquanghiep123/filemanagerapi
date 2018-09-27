@@ -150,7 +150,7 @@ Class Init  {
 				$c = $this->_DB->delete("medias",["id" => $id]);
 			}
 			unlink(PATHFC . $path);
-			$this->_DATA["response"]= $c;
+			$this->_DATA["response"]= $m;
 			$this->_DATA["status"]= 1;	
 		}
 		echo json_encode($this->_DATA);
