@@ -113,11 +113,11 @@ Class Db {
 				$value = trim($value);	
 			if( is_string ($value) )
 				$value = "'" . trim($value) . "'";
-			$data.push($value);	
+			$data[] = ($value);	
 		}
 		$string = implode(",",$data);
 		$this->_condition [] = ("AND `" . trim($column) . "` IN ( " . $string . " )");
-		return true;
+		return $this;
 	}
 	function where_not_in ($column,$arg,$type = false){
 		$string = "";
@@ -210,7 +210,7 @@ Class Db {
 	function update ($table, $dataUpdate, $where = null){
 		$lengthArg =  count($dataUpdate);
 		try{
-			$sql = "UPDATE FROM " . $table ." SET "; 
+			$sql = "UPDATE " . $table ." SET "; 
 			$i = 1;
 			foreach($dataUpdate as $key => $value){
 				if(is_numeric($value))
@@ -239,7 +239,8 @@ Class Db {
 					$i++;
 				}
 			}
-			$this->_conn.query(sql);
+			$this->_conn->query($sql);
+			$this->_sqlPrint .= $sql . "<br/>";
 			return true;
 		}catch (Exception $e) {
 			echo 'Caught exception: ',  $e->getMessage(), "\n";
@@ -301,7 +302,8 @@ Class Db {
 		}
 	}
 	function query ($sql = null){
-		$this->_sql = $sql ;
-		return $this;
+		$this->_source = $this->_conn->query($sql);
+		$this->_sqlPrint .= $sql . "<br/>";
+		return $this->resetQuery();
 	}
 }

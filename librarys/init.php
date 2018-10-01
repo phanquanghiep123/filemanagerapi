@@ -175,12 +175,35 @@ Class Init  {
 		echo json_encode($this->_DATA);
 		return true;
 	}
+	function paste_file(){
+		$ids   = $this->post("ids");
+		$id    = $this->post("id");
+		$ids   = explode(",",$ids);
+		$file  = $this->_DB->from("medias")->where(["id" => $id])->get()->row();
+		$files = $this->_DB->from("medias")->where_in("id",$ids)->get()->rows();
+		$in    = [];
+		$path = "/uploads/";
+		$idRoot = 0;
+		if($file) {
+			$path = $file["path"];
+			$idRoot = $file["id"];
+		}
+		foreach ($files as $key => $value) {
+			unset($value["id"]);
+			$value["pid"] = $idRoot;
+			copy(PATHFC.$value["path"] , PATHFC . $path . $value["name"] . "/");
+			$value["path"] = $path . $value["name"] . "/";
+			$this->_DB->insert("medias",$value);
+			$sql = "update `media` set `path` = CONCAT('".$path."',`name`,'/') where `path` like '%".$value["path"]."%' ";
+			$this->_DB->query($sql);
+		}
+	}
 	private function gen_slug_name_file($str){
 	    $a = array("à", "á", "ạ", "ả", "ã", "â", "ầ", "ấ", "ậ", "ẩ", "ẫ", "ă","ằ", "ắ", "ặ", "ẳ", "ẵ", "è", "é", "ẹ", "ẻ", "ẽ", "ê", "ề" , "ế", "ệ", "ể", "ễ", "ì", "í", "ị", "ỉ", "ĩ", "ò", "ó", "ọ", "ỏ", "õ", "ô", "ồ", "ố", "ộ", "ổ", "ỗ", "ơ" , "ờ", "ớ", "ợ", "ở", "ỡ", "ù", "ú", "ụ", "ủ", "ũ", "ư", "ừ", "ứ", "ự", "ử", "ữ", "ỳ", "ý", "ỵ", "ỷ", "ỹ", "đ", "À", "Á", "Ạ", "Ả", "Ã", "Â", "Ầ", "Ấ", "Ậ", "Ẩ", "Ẫ", "Ă" , "Ằ", "Ắ", "Ặ", "Ẳ", "Ẵ", "È", "É", "Ẹ", "Ẻ", "Ẽ", "Ê", "Ề", "Ế", "Ệ", "Ể", "Ễ", "Ì", "Í", "Ị", "Ỉ", "Ĩ", "Ò", "Ó", "Ọ", "Ỏ", "Õ", "Ô", "Ồ", "Ố", "Ộ", "Ổ", "Ỗ", "Ơ" , "Ờ", "Ớ", "Ợ", "Ở", "Ỡ", "Ù", "Ú", "Ụ", "Ủ", "Ũ", "Ư", "Ừ", "Ứ", "Ự", "Ử", "Ữ", "Ỳ", "Ý", "Ỵ", "Ỷ", "Ỹ", "Đ", " ","ö","ü"); 
 	    $b = array("a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a" , "a", "a", "a", "a", "a", "a", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "i", "i", "i", "i", "i", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o " , "o", "o", "o", "o", "o", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "y", "y", "y", "y", "y", "d", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A " , "A", "A", "A", "A", "A", "E", "E", "E", "E", "E", "E", "E", "E", "E", "E", "E", "I", "I", "I", "I", "I", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O " , "O", "O", "O", "O", "O", "U", "U", "U", "U", "U", "U", "U", "U", "U", "U", "U", "Y", "Y", "Y", "Y", "Y", "D", "-","o","u");
 	    return strtolower(preg_replace(array('/[^a-zA-Z0-9 -]/','/[ -]+/','/^-|-$/'),array('','-',''),str_replace($a,$b,$str)));
     }
-	  private function delete_folder($dir){
+	private function delete_folder($dir){
 		if (is_dir($dir)) {
 		  $objects = scandir($dir);
 		  foreach ($objects as $object) {

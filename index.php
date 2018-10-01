@@ -31,7 +31,9 @@ switch ($action) {
 		$init->update();
 		break;
 	case 'add_folder':
-		$init->add_folder();	
+		$init->add_folder();
+	case 'paste_file':
+		$init->paste_file();
 	default:
 		$init->default();
 		break;	
