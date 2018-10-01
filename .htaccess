@@ -6,5 +6,4 @@ RewriteRule ^ index.php [L]
 <IfModule mod_headers.c>
 	Header set Access-Control-Allow-Origin "*"
 </IfModule>
-php_value upload_max_filesize 100M
-php_value post_max_size 100M
+
