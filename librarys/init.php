@@ -55,17 +55,32 @@ Class Init  {
 
 	}
 	function uploads (){
+		$folderID = $this->post("folder");
+		$folder = $this->_DB->from("medias")->where(["id" => $folderID ])->get()->row();
+		$path = "/uploads";
+		if($folder){
+			$path = $folder["path"];	
+		}else{
+			$folderID = 0;
+		}
 		if($this->file("file")){
 			$file = new File($_FILES["file"],[
-				"path" => PATHFC . "/uploads",
+				"path" => PATHFC . $path,
 				"name" => uniqid(),
 				"extension" => $this->post("extensions")
 			]);
 			$file->move();
 			if($file->status){
 				$file->resize();
+				$file->pid = $folderID;
+				$file->save(); 
+				$fileReturn  = $this->_DB->from("medias")->where(["id" => $file->id ])->get()->row();
+				$this->_DATA["response"]= $fileReturn;
+				$this->_DATA["status"]= 1;
 			}
 		}
+		echo json_encode($this->_DATA);
+		return true;
 	}
 	function add_folder (){
 		$post = $this->post(); 
@@ -155,6 +170,7 @@ Class Init  {
 			}
 			$this->_DATA["response"] = $m;
 			$this->_DATA["status"]= 1;			 
+
 		}
 		echo json_encode($this->_DATA);
 		return true;

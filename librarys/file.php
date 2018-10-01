@@ -1,7 +1,11 @@
 <?php
 namespace librarys;
+use Db;
 class File
  {
+    public $id = 0 ;
+    public $pid = 0; 
+    public $extension;
     private $config = [
         "extension" => "*",
         "path"      => PATHFC,  
@@ -157,6 +161,22 @@ class File
         return $size;
     }
 
+    public function save(){
+        $db = new Db();
+        $in = [
+            "name" => $this->name,
+            "path" => $this->path,
+            "full" => $this->full,
+            "large" => $this->large,
+            "medium" => $this->medium,
+            "small" => $this->small,
+            "thumb" => $this->thumb,
+            "extension" => $this->extension,
+            "pid" => $this->pid
+        ];
+        $this->id =  $db->insert("medias", $in);
+        return $this;
+    }
  }
  
 
