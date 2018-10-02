@@ -48,8 +48,8 @@ Class Init  {
 		$medias = $this->_DB->from("medias")->where(["pid" => $id])->get()->rows();
 		$this->_DATA["response"]= $medias;
 		$this->_DATA["status"]= 1;
-		echo json_encode($this->_DATA);
-		return true;
+		die(json_encode($this->_DATA));
+		
 	}
 	function medias (){
 
@@ -79,8 +79,8 @@ Class Init  {
 				$this->_DATA["status"]= 1;
 			}
 		}
-		echo json_encode($this->_DATA);
-		return true;
+		die(json_encode($this->_DATA));
+		
 	}
 	function add_folder (){
 		$post = $this->post(); 
@@ -122,18 +122,15 @@ Class Init  {
 						$media = $this->_DB->from("medias")->where(["id" => $id])->get()->row();
 						$this->_DATA["response"]= $media;
 						$this->_DATA["status"]= 1;
-						echo json_encode($this->_DATA);
-						return true;
 					}
 				}else{
 					$this->_DATA["status"]= 0;
-					$this->_DATA["message"]= "Folder is exist!";
+					$this->_DATA["message"]= "Folder is exist!";	
 				}
 			}
 			
 		}
-		echo json_encode($this->_DATA);
-		return false;
+		die(json_encode($this->_DATA));
 	}
 	function delete(){
 
@@ -149,8 +146,8 @@ Class Init  {
 		$medias = $this->_DB->from("medias")->where(["pid" => $id])->get()->rows();
 		$this->_DATA["response"]= $medias;
 		$this->_DATA["status"]= 1;
-		echo json_encode($this->_DATA);
-		return true;
+		die(json_encode($this->_DATA));
+		
 	}
 	function delete_file(){
 		$id = $this->post("id");
@@ -172,13 +169,14 @@ Class Init  {
 			$this->_DATA["status"]= 1;			 
 
 		}
-		echo json_encode($this->_DATA);
-		return true;
+		die(json_encode($this->_DATA));
+		
 	}
 	function paste_file(){
-		$ids   = $this->post("ids");
-		$id    = $this->post("id");
-		$ids   = explode(",",$ids);
+		$ids    = $this->post("ids");
+		$id     = $this->post("id");
+		$ids    = explode(",",$ids);
+		$is_cut = $this->post("is_cut") ? $this->post("is_cut") : 0;
 		$file  = $this->_DB->from("medias")->where(["id" => $id])->get()->row();
 		$files = $this->_DB->from("medias")->where_in("id",$ids)->get()->rows();
 		$in    = [];
@@ -188,14 +186,50 @@ Class Init  {
 			$path = $file["path"];
 			$idRoot = $file["id"];
 		}
-		foreach ($files as $key => $value) {
-			unset($value["id"]);
-			$value["pid"] = $idRoot;
-			copy(PATHFC.$value["path"] , PATHFC . $path . $value["name"] . "/");
-			$value["path"] = $path . $value["name"] . "/";
-			$this->_DB->insert("medias",$value);
-			$sql = "update `media` set `path` = CONCAT('".$path."',`name`,'/') where `path` like '%".$value["path"]."%' ";
-			$this->_DB->query($sql);
+		$responseFiles = [];
+		if($is_cut == 0){
+			foreach ($files as $key => $value) {
+				$root = $value["id"];
+				$oldPath = $value["path"];
+				unset($value["id"]);
+				$filesCf = null;
+				if($value["extension"] == "folder"){
+					$filesCf = $this->_DB->from("medias")->like(["path" => $value["path"]])->get()->rows();
+				} 
+				$this->xcopy(PATHFC.$value["path"] , PATHFC . $path . $value["name"] . "/");
+				$value["pid"] = $idRoot;
+				$value["path"] = $path . $value["name"] . "/";
+				$id = $this->_DB->insert("medias",$value);
+				$value["id"] = $id;
+				if($filesCf){
+					
+					$this->copyFnc($filesCf,$root,$id,$oldPath,$value["path"]);
+				}
+				$responseFiles [] = $value;	
+			}
+			$this->_DATA["response"] = $responseFiles;
+			$this->_DATA["status"]= 1;			
+		}
+		die(json_encode($this->_DATA));
+		
+	}
+	private function copyFnc($data,$root,$newParent,$oldPath,$newPath){
+		foreach($data as $key => $value){
+			if($value["pid"] == $root){
+				$n_root = $value["id"];
+				$value["pid"] = $newParent;
+				$n_oldPath = $value["path"] ;
+				$value["path"] = str_replace($oldPath,$newPath,$value["path"]);
+				copy(PATHFC.$n_oldPath , PATHFC . $value["path"]);
+				$oldPath = $n_oldPath;
+				$newPath = $value["path"];
+				unset($value["id"]);
+				$newParent = $this->_DB->insert("medias",$value);
+				unset($data[$key]);
+				if($value["extension"] == "folder"){
+					$this->copyFnc($data,$n_root,$newParent,$oldPath,$newPath);
+				}
+			}
 		}
 	}
 	private function gen_slug_name_file($str){
@@ -217,4 +251,15 @@ Class Init  {
 		  rmdir($dir);
 		}
 	  }
+	  function xcopy($src, $dest) {
+		foreach (scandir($src) as $file) {
+			if (!is_readable($src . '/' . $file)) continue;
+			if (is_dir($src .'/' . $file) && ($file != '.') && ($file != '..') ) {
+				mkdir($dest . '/' . $file);
+				$this->xcopy($src . '/' . $file, $dest . '/' . $file);
+			} else {
+				copy($src . '/' . $file, $dest . '/' . $file);
+			}
+		}
+	}
 } 
