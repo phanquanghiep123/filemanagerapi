@@ -168,11 +168,11 @@ Class Db {
 			$stringcondition = str_replace("WHEREIN","WHERE",$stringcondition);
 		}	
 	    $this->_sql = "SELECT " . $this->_columns . " FROM " . $this->_table . " " . $stringJoin . $stringcondition  . $this->_limit . $this->_order . $this->_group;
+		$this->_sqlPrint .= ($this->_sql. " <br/>");	
 		$this->_source = $this->_conn->query($this->_sql);
 		return $this->resetQuery();
 	}
 	function resetQuery (){
-		$this->_sqlPrint	    .= ($this->_sql. " <br/>");	
 		$this->_sql     		= "";
 		$this->_table   		= null;
 	    $this->_columns 		= "*";

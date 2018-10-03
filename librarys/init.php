@@ -187,50 +187,174 @@ Class Init  {
 			$idRoot = $file["id"];
 		}
 		$responseFiles = [];
-		if($is_cut == 0){
-			foreach ($files as $key => $value) {
-				$root = $value["id"];
-				$oldPath = $value["path"];
-				unset($value["id"]);
-				$filesCf = null;
-				if($value["extension"] == "folder"){
-					$filesCf = $this->_DB->from("medias")->like(["path" => $value["path"]])->get()->rows();
-				} 
-				$this->xcopy(PATHFC.$value["path"] , PATHFC . $path . $value["name"] . "/");
-				$value["pid"] = $idRoot;
-				$value["path"] = $path . $value["name"] . "/";
-				$id = $this->_DB->insert("medias",$value);
-				$value["id"] = $id;
-				if($filesCf){
-					
-					$this->copyFnc($filesCf,$root,$id,$oldPath,$value["path"]);
+		$oldParentFolderPath = "/uploads/";
+		foreach ($files as $key => $value) {
+			if($key == 0){
+				$oldParentFolder = $this->_DB->from("medias",["id" => $value["pid"]])->get()->row();
+				if($oldParentFolder){
+					$oldParentFolderPath = $oldParentFolderPath["path"];
 				}
-				$responseFiles [] = $value;	
 			}
-			$this->_DATA["response"] = $responseFiles;
-			$this->_DATA["status"]= 1;			
+			$root = $value["id"];
+			$oldPath = $value["path"];
+			unset($value["id"]);
+			$filesCf = null;
+			$value["pid"] = $idRoot;
+			$checkFolder = $this->_DB->from("medias")->where(
+				[
+					"name" => trim($value["name"]) ,
+					"pid" => $id 
+				]
+			)->get()->row();
+			if($checkFolder){
+				$value["name"] = uniqid() . '-'. $value["name"];
+			}
+			$value["path"] = $path . $value["name"] . "/";	
+			if($value["extension"] == "folder"){
+				$filesCf = $this->_DB->from("medias")->like(["path" => $oldPath])->get()->rows();
+				if (!file_exists(PATHFC . $value["path"])) { 
+					mkdir(PATHFC . $value["path"] , 0777, true); 
+				} 
+				if(file_exists(ATHFC . $oldPath)){
+					if($is_cut == 1){
+						$this->delete_folder(PATHFC . $oldPath);
+					}
+				}
+			} 
+			else{
+				if(file_exists(ATHFC . $oldPath)){
+					copy( PATHFC . $oldPath , PATHFC .$value["path"] );
+					if($value["full"]){
+						$odl = $value["full"];
+						if (!file_exists(PATHFC . $path ."full")) { 
+							mkdir(PATHFC .$path ."full" , 0777, true); 
+						} 
+						$value["full"] = $path ."full/". $value["name"] ;
+						copy( PATHFC . $odl  ,PATHFC . $value["full"]);
+					}
+					if($value["large"]){
+						$odl = $value["large"];
+						if (!file_exists(PATHFC . $path ."large")) { 
+							mkdir(PATHFC .$path ."large" , 0777, true); 
+						} 
+						$value["large"] = $path ."large/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["large"]);
+					}
+					if($value["medium"]){
+						$odl = $value["medium"];
+						if (!file_exists(PATHFC . $path ."medium")) { 
+							mkdir(PATHFC .$path ."medium" , 0777, true); 
+						} 
+						$value["medium"] = $path ."medium/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["medium"]);
+					}
+					if($value["small"]){
+						$odl = $value["small"];
+						if (!file_exists(PATHFC . $path ."small")) { 
+							mkdir(PATHFC .$path ."small" , 0777, true); 
+						} 
+						$value["small"] = $path ."small/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["small"]);
+					}
+					if($value["thumb"]){
+						$odl = $value["thumb"];
+						if (!file_exists(PATHFC . $path ."thumb")) { 
+							mkdir(PATHFC .$path ."thumb" , 0777, true); 
+						} 
+						$value["thumb"] = $path ."thumb/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["thumb"]);
+					}
+					if($is_cut == 1){
+						unlink(PATHFC . $oldPath);
+					}
+				}	
+			} 
+			$id = $this->_DB->insert("medias",$value);
+			$value["id"] = $id;
+			if($filesCf){
+				$this->copyFnc($filesCf,$root,$id,$value["path"]);
+			}
+			$responseFiles [] = $value;	
 		}
+		$this->_DATA["response"] = $responseFiles;
+		$this->_DATA["status"]= 1;			
+		echo $this->_DB->printsql();
 		die(json_encode($this->_DATA));
 		
 	}
-	private function copyFnc($data,$root,$newParent,$oldPath,$newPath){
+	private function copyFnc($data,$root,$newParent,$newPath){
 		foreach($data as $key => $value){
 			if($value["pid"] == $root){
-				$n_root = $value["id"];
-				$value["pid"] = $newParent;
-				$n_oldPath = $value["path"] ;
-				$value["path"] = str_replace($oldPath,$newPath,$value["path"]);
-				copy(PATHFC.$n_oldPath , PATHFC . $value["path"]);
-				$oldPath = $n_oldPath;
-				$newPath = $value["path"];
+				$oldroot = $value["id"];
+				$checkFolder = $this->_DB->from("medias")->where(
+					[
+						"name" => trim($value["name"]) ,
+						"pid" => $newParent 
+					]
+				)->get()->row();
+				if($checkFolder){
+					$value["name"] = uniqid(). '-'. $value["name"];
+				}
+				$oldnewPath = $newPath . $value["name"] . "/";
+				if($value["extension"] !== "folder"){
+					copy( PATHFC . $value["path"] , PATHFC . $oldnewPath );
+				}else{
+					if (!file_exists(PATHFC . $oldnewPath)) { 
+						mkdir(PATHFC . $oldnewPath , 0777, true); 
+					} 
+				}
+				$value["pid"]  = $newParent;
 				unset($value["id"]);
-				$newParent = $this->_DB->insert("medias",$value);
+				if($value["extension"] !== "folder"){
+					if($value["full"]){
+						$odl = $value["full"];
+						if (!file_exists(PATHFC . $newPath ."full")) { 
+							mkdir(PATHFC .$newPath ."full" , 0777, true); 
+						} 
+						$value["full"] = $newPath ."full/". $value["name"] ;
+						copy( PATHFC . $odl  ,PATHFC . $value["full"]);
+					}
+					if($value["large"]){
+						$odl = $value["large"];
+						if (!file_exists(PATHFC . $newPath ."large")) { 
+							mkdir(PATHFC .$newPath ."large" , 0777, true); 
+						} 
+						$value["large"] = $newPath ."large/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["large"]);
+					}
+					if($value["medium"]){
+						$odl = $value["medium"];
+						if (!file_exists(PATHFC . $newPath ."medium")) { 
+							mkdir(PATHFC .$newPath ."medium" , 0777, true); 
+						} 
+						$value["medium"] = $newPath ."medium/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["medium"]);
+					}
+					if($value["small"]){
+						$odl = $value["small"];
+						if (!file_exists(PATHFC . $newPath ."small")) { 
+							mkdir(PATHFC .$newPath ."small" , 0777, true); 
+						} 
+						$value["small"] = $newPath ."small/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["small"]);
+					}
+					if($value["thumb"]){
+						$odl = $value["thumb"];
+						if (!file_exists(PATHFC . $newPath ."thumb")) { 
+							mkdir(PATHFC .$newPath ."thumb" , 0777, true); 
+						} 
+						$value["thumb"] = $newPath ."thumb/". $value["name"] ;
+						copy( PATHFC . $odl ,PATHFC . $value["thumb"]);
+					}
+				}
+				$value["path"] = $newPath;
+				$oldnewParent = $this->_DB->insert("medias",$value);	 
 				unset($data[$key]);
 				if($value["extension"] == "folder"){
-					$this->copyFnc($data,$n_root,$newParent,$oldPath,$newPath);
+					$this->copyFnc($data,$oldroot,$oldnewParent,$oldnewPath);
 				}
 			}
-		}
+		}	
 	}
 	private function gen_slug_name_file($str){
 	    $a = array("à", "á", "ạ", "ả", "ã", "â", "ầ", "ấ", "ậ", "ẩ", "ẫ", "ă","ằ", "ắ", "ặ", "ẳ", "ẵ", "è", "é", "ẹ", "ẻ", "ẽ", "ê", "ề" , "ế", "ệ", "ể", "ễ", "ì", "í", "ị", "ỉ", "ĩ", "ò", "ó", "ọ", "ỏ", "õ", "ô", "ồ", "ố", "ộ", "ổ", "ỗ", "ơ" , "ờ", "ớ", "ợ", "ở", "ỡ", "ù", "ú", "ụ", "ủ", "ũ", "ư", "ừ", "ứ", "ự", "ử", "ữ", "ỳ", "ý", "ỵ", "ỷ", "ỹ", "đ", "À", "Á", "Ạ", "Ả", "Ã", "Â", "Ầ", "Ấ", "Ậ", "Ẩ", "Ẫ", "Ă" , "Ằ", "Ắ", "Ặ", "Ẳ", "Ẵ", "È", "É", "Ẹ", "Ẻ", "Ẽ", "Ê", "Ề", "Ế", "Ệ", "Ể", "Ễ", "Ì", "Í", "Ị", "Ỉ", "Ĩ", "Ò", "Ó", "Ọ", "Ỏ", "Õ", "Ô", "Ồ", "Ố", "Ộ", "Ổ", "Ỗ", "Ơ" , "Ờ", "Ớ", "Ợ", "Ở", "Ỡ", "Ù", "Ú", "Ụ", "Ủ", "Ũ", "Ư", "Ừ", "Ứ", "Ự", "Ử", "Ữ", "Ỳ", "Ý", "Ỵ", "Ỷ", "Ỹ", "Đ", " ","ö","ü"); 
@@ -249,17 +373,6 @@ Class Init  {
 		  }
 		  reset($objects);
 		  rmdir($dir);
-		}
-	  }
-	  function xcopy($src, $dest) {
-		foreach (scandir($src) as $file) {
-			if (!is_readable($src . '/' . $file)) continue;
-			if (is_dir($src .'/' . $file) && ($file != '.') && ($file != '..') ) {
-				mkdir($dest . '/' . $file);
-				$this->xcopy($src . '/' . $file, $dest . '/' . $file);
-			} else {
-				copy($src . '/' . $file, $dest . '/' . $file);
-			}
 		}
 	}
 } 
