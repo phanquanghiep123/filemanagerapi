@@ -209,19 +209,20 @@ Class Init  {
 			if($checkFolder){
 				$value["name"] = uniqid() . '-'. $value["name"];
 			}
-			$value["path"] = $path . $value["name"] . "/";	
-			if($value["extension"] == "folder"){
+			if($value["extension"] == "folder")
+				$value["path"] = $path . $value["name"] . "/";	
+			else 
+				$value["path"] = $path . $value["name"];
+					
+			if($value["extension"] == "folder")
+			{
 				$filesCf = $this->_DB->from("medias")->like(["path" => $oldPath])->get()->rows();
 				if (!file_exists(PATHFC . $value["path"])) { 
 					mkdir(PATHFC . $value["path"] , 0777, true); 
 				} 
-				if(file_exists(ATHFC . $oldPath)){
-					if($is_cut == 1){
-						$this->delete_folder(PATHFC . $oldPath);
-					}
-				}
 			} 
-			else{
+			else
+			{
 				if(file_exists(ATHFC . $oldPath)){
 					copy( PATHFC . $oldPath , PATHFC .$value["path"] );
 					if($value["full"]){
@@ -263,16 +264,22 @@ Class Init  {
 						} 
 						$value["thumb"] = $path ."thumb/". $value["name"] ;
 						copy( PATHFC . $odl ,PATHFC . $value["thumb"]);
-					}
-					if($is_cut == 1){
-						unlink(PATHFC . $oldPath);
-					}
+					}	
 				}	
 			} 
 			$id = $this->_DB->insert("medias",$value);
 			$value["id"] = $id;
 			if($filesCf){
 				$this->copyFnc($filesCf,$root,$id,$value["path"]);
+			}
+			if($is_cut == 1){
+				if(file_exists(ATHFC . $oldPath)){
+					if($value["extension"] == "folder"){
+						$this->delete_folder(PATHFC . $oldPath);
+					}else{
+						unlink(PATHFC . $oldPath);
+					}	
+				}
 			}
 			$responseFiles [] = $value;	
 		}
