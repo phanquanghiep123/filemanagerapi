@@ -1,14 +1,14 @@
 <?php 
 Class Db {
-	private $_servername = "localhost";
+	private $_servername = "localhost:3306";
 	private $_username = "root";
 	private $_password = "";
 	private $_dbname = "filemanager";
 	private $_conn;
 	private $_rows    		  = [];
-	private $_source          = null;
+	private $_source          = NULL;
 	private $_sql     		  = "";
-	private $_table   		  = null;
+	private $_table   		  = NULL;
 	private $_columns 		  = "*";
 	private $_limit           = "";
 	private $_order           = "";
@@ -19,7 +19,7 @@ Class Db {
 	private $_operator = [
 		"=",">","<","<>",">=","<=","!=","like","in"
 	];
-	function __construct($foo = null)
+	function __construct($foo = NULL)
 	{
 		$this->_conn = mysqli_connect($this->_servername, $this->_username, $this->_password, $this->_dbname) or die("Unable to connect to MySQL");
 		if (mysqli_connect_errno())
@@ -56,15 +56,15 @@ Class Db {
 					$key = $argkey[0];
 					$operator = " " .$argkey[1] ." ";
 				}
-				if($value == null && $value !== 0)
-					$value = "null";
+				if($value === NULL)
+					$value = "NULL";
 				else{
 					if(is_numeric($value))
 						$value = trim($value);	
 					if( is_string ($value) )
 						$value = "'" . trim($value) . "'";
 				}
-				if($value == '')
+				if(trim($value) == '')
 					$value = "''";	
 				$this->_condition[] = ("AND `" .trim($key) ."`" . $operator . $value);
 			}
@@ -73,15 +73,15 @@ Class Db {
 	}
 	function like ($data){
 		foreach($data as $key => $value){
-			if($value == null && $value !== 0)
-					$value = "null";
+			if($value === NULL)
+					$value = "NULL";
 				else{
 					if(is_numeric($value))
 						$value = trim($value);	
 					if( is_string ($value) )
 						$value = "'%" . trim($value) . "%'";
 				}
-				if($value == '')
+				if(trim($value) == '')
 					$value = "''";	
 				$this->_condition[] = ("AND `" .trim($key) . "` LIKE(". $value .")");
 		}
@@ -90,15 +90,15 @@ Class Db {
 	function where_or ($wheredata){
 		if(is_array( $wheredata )){
 			foreach($wheredata as $key => $value){
-				if($value == null && $value !== 0)
-					$value = "null";
+				if($value === NULL)
+					$value = "NULL";
 				else{
 					if(is_numeric($value))
 						$value = trim($value);	
 					if( is_string ($value) )
 						$value = "'" . trim($value) . "'";
 				}
-				if($value == '')
+				if(trim($value) == '')
 					$value = "''";	
 				$this->_condition[] = ("OR `" . trim($key) . "` = " . $value);
 			}
@@ -109,10 +109,16 @@ Class Db {
 		$string = "";
 		$data  = [];
 		foreach ($arg as $key => $value){
-			if(is_numeric($value))
-				$value = trim($value);	
-			if( is_string ($value) )
-				$value = "'" . trim($value) . "'";
+			if($value === NULL)
+				$value = 'NULL';
+			else{
+				if(is_numeric($value))
+					$value = trim($value);	
+				if( is_string ($value) )
+					$value = "'" . trim($value) . "'";
+			}
+			if(trim($value) == '')
+				$value = "''";	
 			$data[] = ($value);	
 		}
 		$string = implode(",",$data);
@@ -123,10 +129,16 @@ Class Db {
 		$string = "";
 		$data  = [];
 		foreach ($arg as $key => $value){
-			if(is_numeric($value))
-				$value = trim($value);	
-			if( is_string ($value) )
-				$value = "'" . trim($value) . "'";
+			if($value === NULL)
+				$value = 'NULL';
+			else{
+				if(is_numeric($value))
+					$value = trim($value);	
+				if( is_string ($value) )
+					$value = "'" . trim($value) . "'";
+			}
+			if(trim($value) == '')
+				$value = "''";
 			$data[] = ($value);	
 		}	
 		$string = implode(",",$data);
@@ -154,7 +166,7 @@ Class Db {
 		return $this;
 	}
 	function get (){
-		$stringcondition = $stringJoin = null;
+		$stringcondition = $stringJoin = NULL;
 		if($this->_condition)
 			$stringcondition = implode(" ",$this->_condition);
 
@@ -169,12 +181,18 @@ Class Db {
 		}	
 	    $this->_sql = "SELECT " . $this->_columns . " FROM " . $this->_table . " " . $stringJoin . $stringcondition  . $this->_limit . $this->_order . $this->_group;
 		$this->_sqlPrint .= ($this->_sql. " <br/>");	
-		$this->_source = $this->_conn->query($this->_sql);
+		$data = $this->_conn->query($this->_sql);
+		if(!$data) {
+			echo $this->_conn->error;
+			return false;
+		}else{
+			$this->_source = $data;
+		}
 		return $this->resetQuery();
 	}
 	function resetQuery (){
 		$this->_sql     		= "";
-		$this->_table   		= null;
+		$this->_table   		= NULL;
 	    $this->_columns 		= "*";
 		$this->_limit           = "";
 		$this->_relationship 	= [];
@@ -186,7 +204,7 @@ Class Db {
 		    $row = $this->_source->fetch_assoc() ;
 		    return ($row);
 		} else {
-		   return null;
+		   return NULL;
 		}
 		return false;
 	}
@@ -199,7 +217,7 @@ Class Db {
 				}
 				return $data;
 			} else {
-			   return null;
+			   return NULL;
 			}
 		}
 		return false;
@@ -207,31 +225,43 @@ Class Db {
 	function printsql (){
 		return $this->_sqlPrint;
 	}
-	function update ($table, $dataUpdate, $where = null){
+	function update ($table, $dataUpdate, $where = NULL){
 		$lengthArg =  count($dataUpdate);
 		try{
 			$sql = "UPDATE " . $table ." SET "; 
 			$i = 1;
 			foreach($dataUpdate as $key => $value){
-				if(is_numeric($value))
-					$value = trim($value);	
-				if( is_string ($value) )
-					$value = "'" . trim($value) . "'";
+				if($value === NULL)
+					$value = "NULL";
+				else{
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'" . trim($value) . "'";
+				}
+				if(trim($value) == '')
+					$value = "''";	
 				if($lengthArg < $i) 
 					$sql .= '`' .trim($key) ."` = " . $value . ",";
 				else 
 					$sql .= '` '. trim($key) . "` = " . $value ;
 				$i++;
 			}
-			if( $where != null){
+			if( $where != NULL){
 				$sql .= " WHERE ";
 				$i = 1;
 				$lengthArg = count($where);
 				foreach($where as $key => $value){
-					if(is_numeric($value))
-						$value = trim($value);	
-					if( is_string ($value) )
-						$value = "'" . trim($value) . "'";
+					if($value === NULL)
+						$value = "NULL";
+					else{
+						if(is_numeric($value))
+							$value = trim($value);	
+						if( is_string ($value) )
+							$value = "'" . trim($value) . "'";
+					}
+					if(trim($value) == '')
+						$value = "''";	
 					if($lengthArg < $i) 
 						$sql .= '`'. trim($key) . "` = " . $value . " AND ";
 					else 
@@ -239,7 +269,11 @@ Class Db {
 					$i++;
 				}
 			}
-			$this->_conn->query($sql);
+			$data = $this->_conn->query($sql);
+			if(!$data) {
+				echo $this->_conn->error;
+				return false;
+			}
 			$this->_sqlPrint .= $sql . "<br/>";
 			return true;
 		}catch (Exception $e) {
@@ -249,21 +283,31 @@ Class Db {
 	}
 	function delete ($table,$where){
 		$sql = "DELETE FROM " . $table; 
-		if($where != null){
+		if($where != NULL){
 			$sql .= " WHERE ";
 			$i = 1;
 			$lengthArg = count($where);
 			foreach($where as $key => $value){
-				if(is_numeric($value))
-					$value = trim($value);	
-				if( is_string ($value) )
-					$value = "'" . trim($value) . "'";
+				if($value === NULL)
+					$value = "NULL";
+				else{
+					if(is_numeric($value))
+						$value = trim($value);	
+					if( is_string ($value) )
+						$value = "'" . trim($value) . "'";
+				}
+				if(trim($value) == '')
+					$value = "''";	
 				if($lengthArg < $i) $sql .= '`'. trim($key) . "` = " . $value . " AND ";
 				else $sql .= '`' . trim($key) . "` = " . $value;
 				$i++;
 			}
 			try{
-				$this->_conn->query($sql);
+				$data = $this->_conn->query($sql);
+				if(!$data) {
+					echo $this->_conn->error;
+					return false;
+				}
 				$this->_sqlPrint .= $sql . "<br/>";
 				return true;
 			}catch (Exception $e) {
@@ -278,20 +322,32 @@ Class Db {
 		$value_insert = [];
 		foreach($data as $key => $value){
 			$key_insert[] = '`'.$key.'`';
-			if(is_numeric($value))
-				$value = trim($value);	
-			if( is_string ($value) )
-				$value = "'" . trim($value) . "'";
+			if($value === NULL)
+				$value = "NULL";
+			else{
+				if(is_numeric($value))
+					$value = trim($value);	
+				if( is_string ($value) )
+					$value = "'" . trim($value) . "'";
+			}
+			if(trim($value) == '')
+				$value = "''";
 			$value_insert[] = $value;
 		}
 		$sql .= "(".implode(",",$key_insert).") VALUE (".implode(",",$value_insert).")";
-
 		try{
-			$this->_conn->query($sql);
-			$this->_sqlPrint .= $sql . "<br/>";
-			$this->_source = $this->_conn->query("SELECT LAST_INSERT_ID()");
-			$r = $this->row();
-			$id = $r["LAST_INSERT_ID()"];
+			$data = $this->_conn->query($sql);
+			if(!$data) {
+				echo $this->_conn->error;
+				return false;
+			}
+			else{
+				$this->_sqlPrint .= $sql . "<br/>";
+				$this->_source = $this->_conn->query("SELECT LAST_INSERT_ID()");
+				$r = $this->row();
+				$id = $r["LAST_INSERT_ID()"];
+			}
+			
 			if($id)
 				return $id;
 			else
@@ -301,7 +357,7 @@ Class Db {
 			return false;
 		}
 	}
-	function query ($sql = null){
+	function query ($sql = NULL){
 		$this->_source = $this->_conn->query($sql);
 		$this->_sqlPrint .= $sql . "<br/>";
 		return $this->resetQuery();

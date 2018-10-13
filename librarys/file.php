@@ -6,6 +6,7 @@ class File
     public $id = 0 ;
     public $pid = 0; 
     public $extension;
+    public $lable_name;
     private $config = [
         "extension" => "*",
         "path"      => PATHFC,  
@@ -17,16 +18,27 @@ class File
 		"small"  => 768,
 		"thumb"  => 420,
 	];
-    private $errors = [];
+    public $errors = [];
     function __construct($files = null,$config) {
-        if(is_array($files)){
-            foreach($files as $key => $value){
-                $this->{$key} = $value;
-                $this->is_server = false;
+        if(is_numeric($files)){
+            $db = new Db();
+            $data = $db->from("medias")->where(["id" => $files])->get()->row();
+            if($data){
+                foreach ($data as $key => $value) {
+                  $this->{$key} = $value;
+                }
             }
-        }else if(is_string($files)){
-            $this->is_server = true;
-            $this->path_file = $files;
+        }else{
+            if(is_array($files)){
+                foreach($files as $key => $value){
+                    $this->{$key} = $value;
+                    $this->is_server = false;
+                }
+                $this->lable_name = $this->name;
+            }else if(is_string($files)){
+                $this->is_server = true;
+                $this->path_file = $files;
+            }
         }
         $this->config = array_merge ($this->config,$config);
     }
@@ -107,13 +119,51 @@ class File
         
         return $this;
     }
-    function crop(){
+    function crop($x,$y,$w,$h){
         return $this;
     }
     function delete(){
-        return $this;
+        
+        if($this-extension !== "folder"){
+            if(file_exists(PATHFC . $this->path))
+                unlink(PATHFC . $this->path);
+            if($this->full && file_exists(PATHFC . $this->full)){
+                unlink(PATHFC . $this->full);
+            }
+            if($this->large && file_exists(PATHFC . $this->large)){
+                unlink(PATHFC . $this->large);
+            }
+            if($this->medium && file_exists(PATHFC . $this->medium)){
+                unlink(PATHFC . $this->medium);
+            }
+            if($this->small && file_exists(PATHFC . $this->small)){
+                unlink(PATHFC . $this->small);
+            }
+            if($this->thumb && file_exists(PATHFC . $this->thumb)){
+                unlink(PATHFC . $this->thumb);
+            }
+        }else{
+            $this->delete_folder(PATHFC . $this->path);
+        }
+        $db = new Db();
+        $db->delete("medias",["id" => $this->id]);
+        return true;
     }
-    function copy (){
+    private function delete_folder($dir){
+		if (is_dir($dir)) {
+		  $objects = scandir($dir);
+		  foreach ($objects as $object) {
+			if ($object != "." && $object != "..") {
+			  if (filetype($dir."/".$object) == "dir") 
+				$this->delete_folder($dir."/".$object); 
+			  else unlink ($dir."/".$object);
+			}
+		  }
+		  reset($objects);
+		  rmdir($dir);
+		}
+	}
+    function copy ($new_path ,$new_name){
         return $this;
     }
     function cut (){
@@ -164,17 +214,17 @@ class File
     public function save(){
         $db = new Db();
         $in = [
-            "name" => $this->name,
-            "path" => $this->path,
-            "full" => $this->full,
-            "large" => $this->large,
-            "medium" => $this->medium,
-            "small" => $this->small,
-            "thumb" => $this->thumb,
+            "name"      => $this->lable_name,
+            "path"      => $this->path,
+            "full"      => @$this->full,
+            "large"     => @$this->large,
+            "medium"    => @$this->medium,
+            "small"     => @$this->small,
+            "thumb"     => @$this->thumb,
             "extension" => $this->extension,
-            "pid" => $this->pid
+            "pid"       => $this->pid
         ];
-        $this->id =  $db->insert("medias", $in);
+        $this->id = $db->insert("medias", $in);
         return $this;
     }
  }

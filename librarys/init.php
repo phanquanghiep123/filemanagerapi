@@ -77,6 +77,8 @@ Class Init  {
 				$fileReturn  = $this->_DB->from("medias")->where(["id" => $file->id ])->get()->row();
 				$this->_DATA["response"]= $fileReturn;
 				$this->_DATA["status"]= 1;
+			}else {
+				$this->_DATA["message"]= $file->errors;
 			}
 		}
 		die(json_encode($this->_DATA));
@@ -146,8 +148,7 @@ Class Init  {
 		$medias = $this->_DB->from("medias")->where(["pid" => $id])->get()->rows();
 		$this->_DATA["response"]= $medias;
 		$this->_DATA["status"]= 1;
-		die(json_encode($this->_DATA));
-		
+		die(json_encode($this->_DATA));		
 	}
 	function delete_file(){
 		$id = $this->post("id");
